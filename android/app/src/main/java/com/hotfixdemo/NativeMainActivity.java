@@ -21,15 +21,7 @@ public class NativeMainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_native_main);
         registerReceiver();
-        load();
-    }
-
-    /**
-     * 下载更新包
-     */
-    public void load() {
         checkVersion();
     }
 
@@ -37,25 +29,26 @@ public class NativeMainActivity extends AppCompatActivity {
      * 检查版本号
      */
     private void checkVersion() {
-        // 默认有最新版本
-        Toast.makeText(this, "开始下载", Toast.LENGTH_SHORT).show();
-        downLoadBundle();
+        Toast.makeText(this, "update...", Toast.LENGTH_SHORT).show();
+        downloadBundle();
     }
 
     /**
      * 下载最新Bundle
      */
-    private void downLoadBundle() {
-        // 1.下载前检查SD卡是否存在更新包文件夹
-        HotUpdate.checkPackage(getApplicationContext(), FileConstant.LOCAL_FOLDER);
-        // 2.下载
+    private void downloadBundle() {
+
+        HotUpdate.checkTempZip(getApplicationContext());
+
         DownloadManager downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
         DownloadManager.Request request = new DownloadManager
                 .Request(Uri.parse(FileConstant.JS_BUNDLE_REMOTE_URL));
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN);
+
         request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_MOBILE | DownloadManager.Request.NETWORK_WIFI);
-        request.setDestinationUri(Uri.parse("file://" + FileConstant.JS_PATCH_LOCAL_PATH));
-        mDownLoadId = downloadManager.enqueue(request);
+        request.setDestinationUri(Uri.parse("file://" + FileConstant.TEMP_ZIP_PATH));
+        if (downloadManager != null)
+            mDownLoadId = downloadManager.enqueue(request);
     }
 
     /**
@@ -72,7 +65,14 @@ public class NativeMainActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             long completeId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
             if (completeId == mDownLoadId) {
-                HotUpdate.handleZIP(getApplicationContext());
+                HotUpdate.handleZIP(getApplicationContext(), new HotUpdate.HandleCallback() {
+                    @Override
+                    public void handle() {
+                        NativeMainActivity.this.startActivity(
+                                new Intent(NativeMainActivity.this, RNMainActivity.class));
+                        NativeMainActivity.this.finish();
+                    }
+                });
             }
         }
     }

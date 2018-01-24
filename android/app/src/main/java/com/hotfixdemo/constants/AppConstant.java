@@ -1,9 +1,6 @@
 package com.hotfixdemo.constants;
 
 public class AppConstant {
-
-    /**
-     * 标识是否是第一次下载更新包
-     */
-    public static final String FIRST_UPDATE = "firstUpdate";
+    public static final String LOCAL_BUNDLE = "LOCAL_BUNDLE";
+    public static final String FORCE_UPDATE = "FORCE_UPDATE";
 }

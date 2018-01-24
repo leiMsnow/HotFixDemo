@@ -1,7 +1,7 @@
 package com.hotfixdemo;
 
 import android.app.Application;
-import android.content.Context;
+import android.util.Log;
 
 import com.facebook.react.ReactApplication;
 import com.facebook.react.ReactNativeHost;
@@ -50,14 +50,14 @@ public class MainApplication extends Application implements ReactApplication {
         @Nullable
         @Override
         protected String getJSBundleFile() {
-            File file = new File (FileConstant.JS_BUNDLE_LOCAL_PATH);
-            if(file.exists()) {
-                return FileConstant.JS_BUNDLE_LOCAL_PATH;
+            File file = new File(FileConstant.LOCAL_JS_BUNDLE);
+            if (file.exists()) {
+                Log.d("getBundleFile","'local_js_bundle'");
+                return FileConstant.LOCAL_JS_BUNDLE;
             } else {
                 return super.getJSBundleFile();
             }
         }
-
 
         @Override
         protected String getJSMainModuleName() {
@@ -70,9 +70,6 @@ public class MainApplication extends Application implements ReactApplication {
         return mReactNativeHost;
     }
 
-    /**
-     *包名
-     */
     public String getAppPackageName() {
         return this.getPackageName();
     }

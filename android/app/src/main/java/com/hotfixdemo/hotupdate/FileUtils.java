@@ -25,9 +25,9 @@ public class FileUtils {
     /**
      * 解压 ZIP 包
      */
-    public static void decompression(String filePath) {
+    public static void decompression(String path) {
         try {
-            ZipInputStream inZip = new ZipInputStream(new FileInputStream(FileConstant.JS_PATCH_LOCAL_PATH));
+            ZipInputStream inZip = new ZipInputStream(new FileInputStream(FileConstant.TEMP_ZIP_PATH));
             ZipEntry zipEntry;
             String szName;
             try {
@@ -37,10 +37,10 @@ public class FileUtils {
                     szName = zipEntry.getName();
                     if(zipEntry.isDirectory()) {
                         szName = szName.substring(0,szName.length()-1);
-                        File folder = new File(filePath + File.separator + szName);
+                        File folder = new File(path + File.separator + szName);
                         folder.mkdirs();
                     }else{
-                        File file1 = new File(filePath + File.separator + szName);
+                        File file1 = new File(path + File.separator + szName);
                         file1.createNewFile();
                         FileOutputStream fos = new FileOutputStream(file1);
                         int len;
@@ -71,7 +71,7 @@ public class FileUtils {
 
         String result = "";
         try {
-            InputStream is = context.getAssets().open(FileConstant.JS_BUNDLE_LOCAL_FILE);
+            InputStream is = context.getAssets().open(FileConstant.JS_BUNDLE_NAME);
             int size = is.available();
             byte[] buffer = new byte[size];
             is.read(buffer);
@@ -86,14 +86,12 @@ public class FileUtils {
 
     /**
      * 解析SD卡下的bundle文件
-     * @param filePath
      * @return
      */
-    public static String getJsBundleFromSDCard(String filePath) {
-
+    public static String getJsBundleFromSDCard() {
         String result = "";
         try {
-            InputStream is = new FileInputStream(filePath);
+            InputStream is = new FileInputStream(FileConstant.LOCAL_JS_BUNDLE);
             int size = is.available();
             byte[] buffer = new byte[size];
             is.read(buffer);
@@ -106,13 +104,11 @@ public class FileUtils {
     }
 
     /**
-     * 将.pat文件转换为String
-     * @param patPath 下载的.pat文件所在目录
      * @return
      */
     public static String getStringFromPat(String patPath) {
 
-        FileReader reader = null;
+        FileReader reader;
         String result = "";
         try {
             reader = new FileReader(patPath);
@@ -133,7 +129,7 @@ public class FileUtils {
     }
 
     /**
-     * 将图片复制到bundle所在文件夹下的drawable-mdpi
+     * 将图片复制到bundle所在文件夹下的drawable
      * @param srcFilePath
      * @param destFilePath
      */

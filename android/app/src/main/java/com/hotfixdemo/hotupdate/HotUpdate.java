@@ -1,6 +1,7 @@
 package com.hotfixdemo.hotupdate;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.hotfixdemo.constants.AppConstant;
 import com.hotfixdemo.constants.FileConstant;
@@ -13,88 +14,64 @@ import java.util.LinkedList;
 
 public class HotUpdate {
 
-    public static void checkPackage(Context context, String filePath) {
-        // 1.下载前检查SD卡是否存在更新包文件夹,FIRST_UPDATE来标识是否为第一次下发更新包
-        File bundleFile = new File(filePath);
-        if (bundleFile.exists()) {
-            ACache.get(context).put(AppConstant.FIRST_UPDATE, false);
-        } else {
-            ACache.get(context).put(AppConstant.FIRST_UPDATE, true);
-        }
+    public interface HandleCallback {
+        void handle();
     }
 
-    public static void handleZIP(final Context context) {
+    // 查看本地是否有zip
+    public static void checkTempZip(Context context) {
+        File bundleFile = new File(FileConstant.TEMP_ZIP_PATH);
+        ACache.get(context).put(AppConstant.FORCE_UPDATE, bundleFile.exists());
+    }
+
+    public static void handleZIP(final Context context, final HandleCallback callback) {
 
         // 开启单独线程，解压，合并。
         new Thread(new Runnable() {
             @Override
             public void run() {
-                boolean result = (Boolean) ACache.get(context).getAsObject(AppConstant.FIRST_UPDATE);
-                if (result) {
-                    // 解压到根目录
-                    FileUtils.decompression(FileConstant.JS_PATCH_LOCAL_FOLDER);
-                    // 合并
-                    mergePatAndAsset(context);
-                } else {
-                    // 解压到future目录
-                    FileUtils.decompression(FileConstant.FUTURE_JS_PATCH_LOCAL_FOLDER);
-                    // 合并
-                    mergePatAndBundle();
+                // 临时文件解析
+                FileUtils.decompression(FileConstant.APP_ROOT);
+//                String assetsBundle;
+//                if (checkLocalBundle()) {
+//                    assetsBundle = FileUtils.getJsBundleFromSDCard();
+//                } else {
+//                    assetsBundle = FileUtils.getJsBundleFromAssets(context);
+//                }
+//                String patchStr = FileUtils.getStringFromPat(FileConstant.TEMP_JS_BUNDLE);
+//                merge(patchStr, assetsBundle);
+                FileUtils.copyPatchImgs(FileConstant.TEMP_DRAWABLE, FileConstant.LOCAL_DRAWABLE);
+                FileUtils.traversalFile(FileConstant.TEMP_ROOT_PATH);
+                if (callback != null) {
+                    callback.handle();
                 }
-                // 删除ZIP压缩包
-                FileUtils.deleteFile(FileConstant.JS_PATCH_LOCAL_PATH);
             }
         }).start();
     }
 
-    /**
-     * 与Asset资源目录下的bundle进行合并
-     */
-    private static void mergePatAndAsset(Context context) {
-
-        // 1.解析Asset目录下的bundle文件
-        String assetsBundle = FileUtils.getJsBundleFromAssets(context);
-        // 2.解析bundle当前目录下.pat文件字符串
-        String patchStr = FileUtils.getStringFromPat(FileConstant.JS_PATCH_LOCAL_FILE);
-        // 3.合并
-        merge(patchStr, assetsBundle);
-        // 4.删除pat
-        FileUtils.deleteFile(FileConstant.JS_PATCH_LOCAL_FILE);
-    }
-
-    /**
-     * 与SD卡下的bundle进行合并
-     */
-    private static void mergePatAndBundle() {
-
-        // 1.解析sd卡目录下的bundle
-        String assetsBundle = FileUtils.getJsBundleFromSDCard(FileConstant.JS_BUNDLE_LOCAL_PATH);
-        // 2.解析最新下发的.pat文件字符串
-        String patcheStr = FileUtils.getStringFromPat(FileConstant.FUTURE_PAT_PATH);
-        // 3.合并
-        merge(patcheStr, assetsBundle);
-        // 4.添加图片
-        FileUtils.copyPatchImgs(FileConstant.FUTURE_DRAWABLE_PATH, FileConstant.DRAWABLE_PATH);
-        // 5.删除本次下发的更新文件
-        FileUtils.traversalFile(FileConstant.FUTURE_JS_PATCH_LOCAL_FOLDER);
+    private static boolean checkLocalBundle() {
+        File bundleFile = new File(FileConstant.LOCAL_JS_BUNDLE);
+        return bundleFile.exists();
     }
 
     /**
      * 合并,生成新的bundle文件
      */
-    private static void merge(String patchStr, String bundle) {
+    private static void merge(String newBundle, String oldBundle) {
 
-        // 3.初始化 dmp
         diff_match_patch dmp = new diff_match_patch();
-        // 4.转换pat
-        LinkedList<diff_match_patch.Patch> paths = (LinkedList<diff_match_patch.Patch>) dmp.patch_fromText(patchStr);
-        // 5.pat与bundle合并，生成新的bundle
-        Object[] bundleArray = dmp.patch_apply(paths, bundle);
-        // 6.保存新的bundle文件
+        LinkedList<diff_match_patch.Diff> diffs = dmp.diff_main(newBundle, oldBundle);
+        for (diff_match_patch.Diff diff : diffs) {
+            Log.d("merge", diff.toString());
+        }
+        LinkedList<diff_match_patch.Patch> patches = dmp.patch_make(diffs);
+        String patchesStr = dmp.patch_toText(patches);
+        LinkedList<diff_match_patch.Patch> patchBundle = (LinkedList<diff_match_patch.Patch>) dmp.patch_fromText(patchesStr);
+        Object[] bundleArray = dmp.patch_apply(patchBundle, oldBundle);
         try {
-            Writer writer = new FileWriter(FileConstant.JS_BUNDLE_LOCAL_PATH);
-            String newBundle = (String) bundleArray[0];
-            writer.write(newBundle);
+            Writer writer = new FileWriter(FileConstant.LOCAL_JS_BUNDLE);
+            String localBundle = (String) bundleArray[0];
+            writer.write(localBundle);
             writer.close();
         } catch (IOException e) {
             e.printStackTrace();
